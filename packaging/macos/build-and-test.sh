@@ -31,6 +31,11 @@ cmake -S "${PROJECT_DIR}" -B "${BUILD_DIR}" \
 cmake --build "${BUILD_DIR}" --parallel
 DYLD_LIBRARY_PATH="${QT_ROOT}/lib${DYLD_LIBRARY_PATH:+:${DYLD_LIBRARY_PATH}}" \
     ctest --test-dir "${BUILD_DIR}" --output-on-failure
+
+# A staging prefix can retain files from an older install layout.  Recreate
+# only disposable staging/package output so the PKG contains this build alone.
+cmake -E rm -rf "${STAGE_DIR}" "${BUILD_DIR}/packages"
+cmake -E make_directory "${STAGE_DIR}"
 cmake --install "${BUILD_DIR}" --prefix "${STAGE_DIR}"
 (
     cd "${BUILD_DIR}"
