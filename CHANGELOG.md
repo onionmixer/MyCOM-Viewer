@@ -7,6 +7,10 @@
   보강했습니다.
 - MYCOM ISO와 변환된 원본 콘텐츠가 프로젝트 MIT 라이선스의 대상이 아님을
   README에 명시했습니다.
+- Windows NSIS installer의 완료 화면에 MYCOM Viewer 실행과 README 열기를
+  별도 선택 항목으로 제공하도록 보완했습니다.
+- macOS 패키징 전 disposable stage/package 출력만 정리해 과거 설치 레이아웃의
+  잔여물이 새 PKG에 섞이지 않도록 했습니다.
 
 ## 0.7.0
 
