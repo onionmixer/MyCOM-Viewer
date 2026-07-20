@@ -38,10 +38,17 @@ ctest --test-dir "%BUILD_DIR%" -C Release --output-on-failure
 if errorlevel 1 exit /b %errorlevel%
 cmake --install "%BUILD_DIR%" --config Release --prefix "%STAGE_DIR%"
 if errorlevel 1 exit /b %errorlevel%
-pushd "%BUILD_DIR%"
-cpack --config CPackConfig.cmake -C Release -G NSIS
-set "CPACK_RESULT=%ERRORLEVEL%"
-popd
-if not "%CPACK_RESULT%"=="0" exit /b %CPACK_RESULT%
+if not defined MAKENSIS set "MAKENSIS=%ProgramFiles(x86)%\NSIS\makensis.exe"
+if not exist "%MAKENSIS%" (
+    where makensis >nul 2>nul
+    if not errorlevel 1 set "MAKENSIS=makensis"
+)
+if not exist "%MAKENSIS%" if /I not "%MAKENSIS%"=="makensis" (
+    echo NSIS makensis was not found. Set MAKENSIS to makensis.exe. 1>&2
+    exit /b 1
+)
+if not exist "%BUILD_DIR%\packages" mkdir "%BUILD_DIR%\packages"
+"%MAKENSIS%" /DSTAGE_DIR="%STAGE_DIR%" /DOUTFILE="%BUILD_DIR%\packages\mycom-viewer-0.7.1-win64.exe" "%PROJECT_DIR%\packaging\windows\installer.nsi"
+if errorlevel 1 exit /b %errorlevel%
 
 echo Windows build, test, staged install, and NSIS package completed.
