@@ -1,0 +1,30 @@
+# Runs from cmake_install.cmake / CPack on macOS after mycom-viewer.app has
+# been staged. CMAKE_INSTALL_PREFIX is evaluated at install time, including
+# when a temporary CPack prefix is in use.
+set(_mycom_install_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
+set(_mycom_viewer_app "${_mycom_install_root}/Applications/mycom-viewer.app")
+# Retain compatibility with a developer install configured before the PKG
+# layout was introduced.
+if(NOT EXISTS "${_mycom_viewer_app}")
+    set(_mycom_viewer_app "${_mycom_install_root}/mycom-viewer.app")
+endif()
+set(_mycom_archive_build "${_mycom_install_root}/@MYCOM_MACOS_ARCHIVE_BUILD_RELATIVE@")
+
+if(NOT EXISTS "${_mycom_viewer_app}")
+    message(FATAL_ERROR "MYCOM Viewer app bundle was not installed before Qt deployment: ${_mycom_viewer_app}")
+endif()
+
+set(_mycom_macdeployqt_args "${_mycom_viewer_app}" -always-overwrite)
+if(EXISTS "${_mycom_archive_build}")
+    # Keep the separately installed archive builder runnable by pointing it at
+    # the same Frameworks directory deployed into mycom-viewer.app.
+    list(APPEND _mycom_macdeployqt_args "-executable=${_mycom_archive_build}")
+endif()
+
+execute_process(
+    COMMAND "@MYCOM_MACDEPLOYQT_EXECUTABLE@" ${_mycom_macdeployqt_args}
+    RESULT_VARIABLE _mycom_macdeployqt_result
+)
+if(NOT _mycom_macdeployqt_result EQUAL 0)
+    message(FATAL_ERROR "macdeployqt failed with exit code ${_mycom_macdeployqt_result}")
+endif()

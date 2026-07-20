@@ -1,0 +1,16 @@
+# Runs from cmake_install.cmake / CPack on Windows after mycom-viewer.exe has
+# been installed. CMAKE_INSTALL_PREFIX is evaluated at install time, so this
+# also supports `cmake --install --prefix <staging-directory>`.
+set(_mycom_viewer "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_INSTALL_BINDIR@/mycom-viewer.exe")
+
+if(NOT EXISTS "${_mycom_viewer}")
+    message(FATAL_ERROR "MYCOM Viewer was not installed before Qt deployment: ${_mycom_viewer}")
+endif()
+
+execute_process(
+    COMMAND "@MYCOM_WINDEPLOYQT_EXECUTABLE@" --no-translations --compiler-runtime "${_mycom_viewer}"
+    RESULT_VARIABLE _mycom_windeployqt_result
+)
+if(NOT _mycom_windeployqt_result EQUAL 0)
+    message(FATAL_ERROR "windeployqt failed with exit code ${_mycom_windeployqt_result}")
+endif()

@@ -1,5 +1,6 @@
 #include "bookmark_store.h"
 #include "archive_manifest.h"
+#include "archive_tool_locator.h"
 
 #include <QAction>
 #include <QApplication>
@@ -17,6 +18,7 @@
 #include <QFont>
 #include <QFontDialog>
 #include <QHash>
+#include <QIcon>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -26,6 +28,10 @@
 #include <QMediaPlayer>
 #include <QMessageBox>
 #include <QLineEdit>
+#include <QLabel>
+#include <QPlainTextEdit>
+#include <QProcess>
+#include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
 #include <QSet>
@@ -39,6 +45,7 @@
 #include <QTextEdit>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTimer>
 #include <QTreeWidget>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -109,6 +116,177 @@ bool isHeadingLike(const QString &text)
     return KoreanCharacters >= 2 || value.count(QRegularExpression(QStringLiteral("[A-Za-z]"))) >= 6;
 }
 
+class IsoUnpackDialog final : public QDialog {
+public:
+    IsoUnpackDialog(QString builderPath, QString isoPath, QString outputDirectory,
+                    bool rebuild, QWidget *parent = nullptr)
+        : QDialog(parent)
+        , builderPath_(std::move(builderPath))
+        , isoPath_(std::move(isoPath))
+        , outputDirectory_(QDir(outputDirectory).absolutePath())
+        , rebuild_(rebuild)
+    {
+        setWindowTitle(QStringLiteral("ISO unpack"));
+        setModal(true);
+        resize(720, 420);
+        auto *layout = new QVBoxLayout(this);
+        status_ = new QLabel(this);
+        status_->setWordWrap(true);
+        layout->addWidget(status_);
+        log_ = new QPlainTextEdit(this);
+        log_->setReadOnly(true);
+        log_->setLineWrapMode(QPlainTextEdit::NoWrap);
+        layout->addWidget(log_, 1);
+        cancelButton_ = new QPushButton(QStringLiteral("Cancel"), this);
+        layout->addWidget(cancelButton_, 0, Qt::AlignRight);
+        process_ = new QProcess(this);
+        process_->setProcessChannelMode(QProcess::SeparateChannels);
+        connect(cancelButton_, &QPushButton::clicked, this, [this] { cancel(); });
+        connect(process_, &QProcess::readyReadStandardOutput, this, [this] {
+            appendOutput(process_->readAllStandardOutput());
+        });
+        connect(process_, &QProcess::readyReadStandardError, this, [this] {
+            appendOutput(process_->readAllStandardError());
+        });
+        connect(process_, QOverload<QProcess::ProcessError>::of(&QProcess::errorOccurred), this,
+                [this](QProcess::ProcessError error) {
+                    if (error == QProcess::FailedToStart) {
+                        lastProcessError_ = process_->errorString();
+                        if (!terminal_)
+                            finishFailure(QStringLiteral("Cannot start archive builder: %1")
+                                              .arg(lastProcessError_));
+                    }
+                });
+        connect(process_, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this,
+                [this](int exitCode, QProcess::ExitStatus exitStatus) { processFinished(exitCode, exitStatus); });
+    }
+
+    void start()
+    {
+        startProcess(Stage::BuilderVersion, {QStringLiteral("--version")},
+                     QStringLiteral("Checking the packaged archive builder..."));
+    }
+
+    bool succeeded() const { return succeeded_; }
+
+protected:
+    void reject() override
+    {
+        if (process_->state() != QProcess::NotRunning) {
+            cancel();
+            return;
+        }
+        QDialog::reject();
+    }
+
+private:
+    enum class Stage { BuilderVersion, ToolCheck, Unpack };
+
+    void appendOutput(const QByteArray &bytes)
+    {
+        const QString output = QString::fromLocal8Bit(bytes).trimmed();
+        if (!output.isEmpty())
+            log_->appendPlainText(output);
+    }
+
+    void startProcess(Stage stage, const QStringList &arguments, const QString &status)
+    {
+        stage_ = stage;
+        lastProcessError_.clear();
+        status_->setText(status);
+        log_->appendPlainText(QStringLiteral("$ %1 %2").arg(builderPath_, arguments.join(QLatin1Char(' '))));
+        process_->setProgram(builderPath_);
+        process_->setArguments(arguments);
+        process_->start();
+    }
+
+    void processFinished(int exitCode, QProcess::ExitStatus exitStatus)
+    {
+        appendOutput(process_->readAllStandardOutput());
+        appendOutput(process_->readAllStandardError());
+        if (terminal_)
+            return;
+        if (cancelRequested_) {
+            finishFailure(QStringLiteral("ISO unpack was canceled. Any partial output was left in place: %1")
+                              .arg(outputDirectory_));
+            return;
+        }
+        if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+            QString detail = lastProcessError_;
+            if (detail.isEmpty())
+                detail = QStringLiteral("archive builder exited with code %1.").arg(exitCode);
+            finishFailure(QStringLiteral("%1\nSee the log below for details.").arg(detail));
+            return;
+        }
+        switch (stage_) {
+        case Stage::BuilderVersion:
+            startProcess(Stage::ToolCheck, {QStringLiteral("--check-tools")},
+                         QStringLiteral("Checking the built-in ISO extractor..."));
+            return;
+        case Stage::ToolCheck: {
+            QStringList arguments;
+            if (rebuild_)
+                arguments.append(QStringLiteral("--rebuild"));
+            arguments.append(isoPath_);
+            arguments.append(outputDirectory_);
+            startProcess(Stage::Unpack, arguments,
+                         QStringLiteral("Unpacking and converting the ISO. This can take a while..."));
+            return;
+        }
+        case Stage::Unpack:
+            break;
+        }
+        if (!QFileInfo(QDir(outputDirectory_).filePath(QStringLiteral("manifest.json"))).isFile()) {
+            finishFailure(QStringLiteral("The archive builder finished without producing manifest.json."));
+            return;
+        }
+        succeeded_ = true;
+        terminal_ = true;
+        status_->setText(QStringLiteral("ISO unpack completed. Opening the converted archive..."));
+        accept();
+    }
+
+    void cancel()
+    {
+        if (process_->state() == QProcess::NotRunning) {
+            reject();
+            return;
+        }
+        if (cancelRequested_)
+            return;
+        cancelRequested_ = true;
+        status_->setText(QStringLiteral("Canceling archive builder..."));
+        cancelButton_->setEnabled(false);
+        process_->terminate();
+        QTimer::singleShot(3000, this, [this] {
+            if (process_->state() != QProcess::NotRunning)
+                process_->kill();
+        });
+    }
+
+    void finishFailure(const QString &message)
+    {
+        terminal_ = true;
+        status_->setText(message);
+        cancelButton_->setText(QStringLiteral("Close"));
+        cancelButton_->setEnabled(true);
+    }
+
+    QString builderPath_;
+    QString isoPath_;
+    QString outputDirectory_;
+    bool rebuild_ = false;
+    bool cancelRequested_ = false;
+    bool terminal_ = false;
+    bool succeeded_ = false;
+    Stage stage_ = Stage::BuilderVersion;
+    QString lastProcessError_;
+    QLabel *status_ = nullptr;
+    QPlainTextEdit *log_ = nullptr;
+    QPushButton *cancelButton_ = nullptr;
+    QProcess *process_ = nullptr;
+};
+
 class Viewer final : public QMainWindow {
 public:
     explicit Viewer(const QString &initialDirectory = {}, QWidget *parent = nullptr)
@@ -178,6 +356,8 @@ public:
         auto *openAction = fileMenu->addAction(QStringLiteral("Open converted archive..."));
         openAction->setShortcut(QKeySequence::Open);
         connect(openAction, &QAction::triggered, this, [this] { chooseDirectory(); });
+        auto *unpackAction = fileMenu->addAction(QStringLiteral("ISO unpack..."));
+        connect(unpackAction, &QAction::triggered, this, [this] { chooseIsoUnpack(); });
         fileMenu->addSeparator();
         auto *quitAction = fileMenu->addAction(QStringLiteral("Quit"));
         quitAction->setShortcut(QKeySequence::Quit);
@@ -470,6 +650,71 @@ private:
             this, QStringLiteral("Open MYCOM archive"), rootDirectory_);
         if (!directory.isEmpty())
             loadDirectory(directory);
+    }
+
+    void chooseIsoUnpack()
+    {
+        QSettings settings(settingsFilePath(), QSettings::IniFormat);
+        const QString lastIso = settings.value(QStringLiteral("isoUnpack/lastIsoPath")).toString();
+        const QString isoPath = QFileDialog::getOpenFileName(
+            this, QStringLiteral("Select MYCOM ISO"),
+            QFileInfo(lastIso).isFile() ? QFileInfo(lastIso).absolutePath() : QDir::homePath(),
+            QStringLiteral("ISO images (*.iso *.ISO);;All files (*)"));
+        if (isoPath.isEmpty())
+            return;
+        const QFileInfo isoInfo(isoPath);
+        if (!isoInfo.isFile()) {
+            QMessageBox::warning(this, QStringLiteral("ISO unpack"),
+                                 QStringLiteral("The selected ISO file is not readable."));
+            return;
+        }
+
+        const QString builderPath = ArchiveToolLocator::findArchiveBuilder(QCoreApplication::applicationDirPath());
+        if (builderPath.isEmpty()) {
+            QMessageBox::warning(this, QStringLiteral("ISO unpack"),
+                                 QStringLiteral("The packaged mycom-archive-build command-line tool was not found or is not executable.\n\n"
+                                                "Expected locations:\n%1")
+                                     .arg(ArchiveToolLocator::archiveBuilderCandidates(
+                                         QCoreApplication::applicationDirPath()).join(QLatin1Char('\n'))));
+            return;
+        }
+
+        const QString lastOutput = settings.value(QStringLiteral("isoUnpack/lastOutputDirectory")).toString();
+        const QString outputDirectory = QFileDialog::getExistingDirectory(
+            this, QStringLiteral("Select empty archive output directory"),
+            QFileInfo(lastOutput).isDir() ? lastOutput : isoInfo.absolutePath());
+        if (outputDirectory.isEmpty())
+            return;
+        QDir output(outputDirectory);
+        const bool nonEmptyOutput = output.exists()
+            && !output.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty();
+        bool rebuild = false;
+        if (nonEmptyOutput) {
+            if (!QFileInfo(output.filePath(QStringLiteral("manifest.json"))).isFile()) {
+                QMessageBox::warning(this, QStringLiteral("ISO unpack"),
+                                     QStringLiteral("The output directory is not empty. Choose an empty directory.\n%1")
+                                         .arg(output.absolutePath()));
+                return;
+            }
+            if (QMessageBox::question(
+                    this, QStringLiteral("Rebuild existing archive"),
+                    QStringLiteral("This directory contains an existing MYCOM archive. Rebuilding it will delete and replace its contents.\n\n%1")
+                        .arg(output.absolutePath()),
+                    QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel) != QMessageBox::Yes) {
+                return;
+            }
+            rebuild = true;
+        }
+
+        settings.setValue(QStringLiteral("isoUnpack/lastIsoPath"), isoInfo.absoluteFilePath());
+        settings.setValue(QStringLiteral("isoUnpack/lastOutputDirectory"), output.absolutePath());
+        settings.sync();
+
+        IsoUnpackDialog progress(builderPath, isoInfo.absoluteFilePath(), output.absolutePath(), rebuild, this);
+        progress.start();
+        progress.exec();
+        if (progress.succeeded())
+            loadDirectory(output.absolutePath());
     }
 
     void showAbout()
@@ -1268,9 +1513,11 @@ int main(int argc, char *argv[])
     QApplication application(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("MYCOM Archive"));
     QCoreApplication::setApplicationName(QStringLiteral("mycom-viewer"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.7.0"));
+    application.setWindowIcon(QIcon(QStringLiteral(":/icons/mycom-viewer.svg")));
     QCommandLineParser parser;
     parser.addHelpOption();
+    parser.addVersionOption();
     parser.addPositionalArgument(QStringLiteral("archive-directory"),
                                  QStringLiteral("Directory generated by mycom-archive-build."));
     parser.process(application);

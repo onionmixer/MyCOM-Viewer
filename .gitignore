@@ -1,5 +1,11 @@
 # CMake and compiler output
 /build/
+/build-windows/
+/stage-windows/
+/build-linux/
+/stage-linux/
+/build-macos/
+/stage-macos/
 /cmake-build-*/
 /CMakeCache.txt
 /CMakeFiles/
@@ -23,6 +29,7 @@
 .idea/
 .vscode/
 mycom-viewer.ini
+HANDOFF.md
 
 # Source media and extracted ISO data (rebuild with mycom-archive-build)
 *.iso
@@ -45,3 +52,11 @@ mycom-viewer.ini
 /mycom-iso-integration-archive/
 /.tmp/
 /tmp/
+
+# Locally generated release packages
+*.tar.gz
+*.deb
+*.dmg
+*.pkg
+*.msi
+/_CPack_Packages/

@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="mycom-viewer.svg">icons/mycom-viewer.svg</file>
+    </qresource>
+</RCC>

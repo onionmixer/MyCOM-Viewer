@@ -21,9 +21,15 @@ int main(int argc, char *argv[])
     valid.insert(QStringLiteral("contentDirectory"), QStringLiteral("../outside"));
     if (readArchiveManifestPaths(valid).error.isEmpty())
         return 2;
+    valid.insert(QStringLiteral("contentDirectory"), QStringLiteral("C:\\outside"));
+    if (readArchiveManifestPaths(valid).error.isEmpty())
+        return 3;
+    valid.insert(QStringLiteral("contentDirectory"), QStringLiteral("\\\\server\\share"));
+    if (readArchiveManifestPaths(valid).error.isEmpty())
+        return 4;
     valid.insert(QStringLiteral("contentDirectory"), QStringLiteral("content"));
     valid.insert(QStringLiteral("schemaVersion"), 2);
     if (readArchiveManifestPaths(valid).error.isEmpty())
-        return 3;
+        return 5;
     return 0;
 }

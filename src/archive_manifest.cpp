@@ -6,9 +6,17 @@ namespace {
 
 QString safeRelativeDirectory(const QString &value)
 {
-    const QString cleaned = QDir::cleanPath(value);
+    // Archive metadata is portable and always stores '/' separators. QDir
+    // accepts them on Windows, but normalize a hand-edited Windows manifest
+    // before validating it so the safety check is platform-independent.
+    QString portable = value;
+    portable.replace(QLatin1Char('\\'), QLatin1Char('/'));
+    const QString cleaned = QDir::cleanPath(portable);
+    const bool driveQualified = cleaned.size() >= 2 && cleaned.at(0).isLetter()
+                               && cleaned.at(1) == QLatin1Char(':');
     if (cleaned.isEmpty() || cleaned == QStringLiteral(".") || cleaned == QStringLiteral("..")
-        || QDir::isAbsolutePath(cleaned) || cleaned.startsWith(QStringLiteral("../")))
+        || QDir::isAbsolutePath(cleaned) || cleaned.startsWith(QLatin1Char('/')) || driveQualified
+        || cleaned.startsWith(QStringLiteral("../")))
         return {};
     return cleaned;
 }

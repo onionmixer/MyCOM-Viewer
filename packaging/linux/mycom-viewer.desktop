@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=MYCOM Viewer
+Comment=Browse a normalized MYCOM archive
+Exec=mycom-viewer
+Icon=mycom-viewer
+Terminal=false
+Categories=Education;Utility;Viewer;
+StartupWMClass=mycom-viewer

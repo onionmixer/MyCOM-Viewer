@@ -1,148 +1,102 @@
-MYCOM Archive Builder / Qt5 Viewer
-==================================
+MYCOM Viewer
+============
 
-1. 개요
--------
+Release 0.7.0
 
-이 프로젝트는 MYCOM CD의 원본 ISO를 읽어 정규화된 아카이브를 만들고,
-Qt5 프로그램으로 아카이브를 열람합니다.
+MYCOM CD-ROM ISO에서 자료를 복원해 읽을 수 있게 만드는 프로그램입니다.
 
-원본 ISO는 수정하지 않습니다.
+  MYCOM.ISO (읽기 전용)
+    -> mycom-archive-build
+    -> mycom-archive (정규화 원본 + 변환 콘텐츠 + manifest)
+    -> mycom-viewer
 
-  MYCOM.ISO
-      -> mycom-archive-build
-      -> 아카이브 디렉터리
-      -> mycom-viewer
+중요
+----
 
-실행 파일은 두 개입니다.
+* 내장 ISO9660 reader로 ISO를 직접 분해·변환합니다.
+* 배포 패키지에는 ISO와 변환 archive가 기본 포함되지 않습니다.
+* File -> ISO unpack...은 함께 배포된 archive builder와 내장 ISO9660 reader를 점검한 뒤 ISO를
+  변환하고, 결과 archive를 자동으로 엽니다.
 
-  mycom-archive-build : ISO 추출, 정규화, MVB/DBF 분석 및 변환
-  mycom-viewer        : manifest 기반 아카이브 Qt5 열람기
+처음 사용하기
+-------------
 
-7z는 ISO를 읽기 위해 빌더가 호출하는 외부 도구입니다. 별도 프로젝트나
-수동 추출 단계는 필요하지 않습니다.
+1. 이미 만든 mycom-archive 폴더(manifest.json 포함)가 있으면 viewer에서
+   File -> Open converted archive...를 선택해 해당 폴더를 엽니다.
+2. ISO만 있다면 File -> ISO unpack...을 선택하고 ISO와 비어 있는 출력 폴더를
+   지정합니다. 외부 추출 도구는 필요하지 않습니다. 기존 archive는 명시적으로 확인한 경우에만 재생성하며, 취소한 작업의 부분 출력은
+   자동 삭제하지 않습니다.
+3. 터미널 작업이 필요하면 archive를 직접 만듭니다.
 
+  mycom-archive-build MYCOM.ISO mycom-archive
 
-2. 요구 사항
+Windows 예시:
+
+  mycom-archive-build.exe C:\path\to\MYCOM.ISO C:\path\to\mycom-archive
+
+내장 ISO9660 reader 점검만 실행하려면 다음을 사용합니다.
+
+  mycom-archive-build --check-tools
+
+기존 archive를 다시 만들려면 다음을 사용합니다. 정상 archive만 삭제할 수
+있도록 보호되어 있습니다.
+
+  mycom-archive-build --rebuild MYCOM.ISO mycom-archive
+
+Archive 열기
+-----------
+
+  mycom-viewer mycom-archive
+
+viewer는 기사·월별 목록·복원 텍스트 탐색, 대소문자 구분 없는 검색, 콘텐츠 안의
+Ctrl+F 검색과 강조 표시, 북마크, 본문 글꼴/확대·축소, WAV/AVI 재생을 지원합니다.
+북마크와 콘텐츠 글꼴은 사용자별 mycom-viewer.ini에 저장됩니다.
+
+플랫폼별 설치
+---------------
+
+Windows
+  NSIS 설치 프로그램을 실행합니다. 설치 마침 화면의 README 열기를 선택하면
+  이 문서를 바로 볼 수 있고, 시작 메뉴에도 README 바로가기가 있습니다.
+  ISO 변환은 File -> ISO unpack...에서 수행할 수 있으며 별도 추출 프로그램 설치가
+  필요하지 않습니다. Windows 설치된 앱 또는 시작 메뉴의 제거 항목으로 제거합니다.
+  사용자가 만든 archive는 제거하지 않습니다.
+
+Ubuntu
+  sudo apt install ./mycom-viewer_*.deb
+
+  응용 프로그램 메뉴의 MYCOM Viewer 또는 mycom-viewer 명령으로 실행합니다.
+  이 문서는 /usr/share/doc/mycom-viewer/README.txt에 설치됩니다. ISO 변환에는
+  추가 추출 도구가 필요하지 않습니다.
+
+  sudo apt remove mycom-viewer
+
+macOS
+  MYCOM-Viewer-...pkg를 열어 Installer 절차를 따릅니다. Installer가 설치 전
+  README를 표시하고, 설치 후에는 mycom-viewer.app의 Resources에도 이 문서가
+  들어 있습니다. viewer는 Applications 폴더에서 실행합니다.
+
+  GUI의 File -> ISO unpack...은 /usr/local/bin/mycom-archive-build의 내장
+  ISO9660 reader를 사용합니다.
+  서명·공증되지 않은 개발 패키지는 macOS 보안 설정에서 열기를 승인해야 할 수
+  있습니다.
+
+Archive 형식
 ------------
 
-  - CMake 3.16 이상
-  - C++17 컴파일러
-  - Qt 5.12 이상
-      Core, Widgets, Multimedia, MultimediaWidgets
-  - 7z 실행 파일
+  mycom-archive/
+    manifest.json                 형식, ISO SHA-256, 검증 정보
+    normalized/mvb/                정규화된 MVB 원본
+    normalized/dbf/MYDBF01.DBF
+    normalized/assets/{bmp,wav,myavi}/
+    content/                       viewer가 읽는 JSON 콘텐츠
 
+manifest.json은 ISO SHA-256, 정규화 파일별 SHA-256·크기, MVB/asset 수,
+DBF 레코드 수와 변환 결과를 기록합니다.
 
-3. 빌드
---------
+릴리즈 정보
+-----------
 
-  cmake -S . -B build
-  cmake --build build
-
-
-4. 아카이브 생성
------------------
-
-  ./build/mycom-archive-build MYCOM.ISO mycom_archive
-
-7z가 PATH에 없으면 다음과 같이 지정합니다.
-
-  ./build/mycom-archive-build --seven-zip /path/to/7z MYCOM.ISO mycom_archive
-
-출력 대상 디렉터리는 새 디렉터리이거나 비어 있어야 합니다.
-이미 생성된 유효한 MYCOM 아카이브를 갱신하려면 다음을 사용합니다.
-
-  ./build/mycom-archive-build --rebuild MYCOM.ISO mycom_archive
-
---rebuild는 manifest.json이 있고 형식이 확인된 MYCOM 아카이브만 삭제합니다.
-임의의 비어 있지 않은 디렉터리는 삭제하지 않습니다.
-
-선택 옵션:
-
-  --topic-pages  기사 단위의 정적 HTML을 content/topics에 생성
-  --review-html  원시 복원 텍스트 및 탐색 보고서 HTML 생성
-  --min-bytes N  진단용 최소 텍스트 연속 길이 지정
-
-Qt5 뷰어에 필요한 것은 JSON이므로, 정적 HTML은 기본으로 생성하지 않습니다.
-
-
-5. 생성되는 아카이브 구조
----------------------------
-
-  mycom_archive/
-    manifest.json
-    normalized/
-      mvb/                       정규화된 MVB 파일
-      dbf/MYDBF01.DBF            원본 DBF 카탈로그
-      assets/
-        bmp/
-        wav/
-        myavi/
-    content/
-      HEADA.json 등              Qt5 뷰어용 변환 데이터
-
-manifest.json은 다음 정보를 기록합니다.
-
-  - ISO 파일명, 크기, 수정 시각, ISO SHA-256
-  - 정규화 MVB/DBF/BMP/WAV/AVI 파일 목록
-  - 각 정규화 파일의 canonical path, byte 크기, SHA-256
-  - MVB 수, 자산 수, DBF 기사 수, 변환 책 수
-  - content 형식과 선택 생성된 정적 HTML 종류
-
-
-6. Qt5 뷰어 실행
------------------
-
-  ./build/mycom-viewer mycom_archive
-
-뷰어는 manifest.json을 먼저 검증하고 content 및 normalized/assets 경로를
-확인한 뒤 아카이브를 엽니다.
-
-주요 기능:
-
-  - 월별 목록, 기사, 복원 텍스트 열람
-  - 전체 아카이브 검색 및 오른쪽 내용 영역 내 Ctrl+F 검색
-  - 검색어 강조, 대소문자 비구분 검색
-  - 내용 글꼴 선택 및 10% 단위 확대/축소
-  - 북마크
-  - WAV/AVI 미디어 재생
-
-글꼴과 북마크 설정은 사용자 설정의 mycom-viewer.ini에 저장됩니다.
-
-
-7. 검증
---------
-
-일반 단위 테스트:
-
-  ctest --test-dir build --output-on-failure
-
-실제 ISO 전체 통합 테스트:
-
-  MYCOM_ISO=/absolute/path/to/MYCOM.ISO \
-    ctest --test-dir build -L iso --output-on-failure
-
-MYCOM_ISO가 설정되면 ISO 전체 빌드 후 다음을 검증합니다.
-
-  - manifest 형식 및 schemaVersion
-  - ISO SHA-256
-  - MVB 17개
-  - DBF 기사 2,010건
-  - 변환 책 17개
-  - 정규화 파일 7,688개의 SHA-256 목록
-
-MYCOM_ISO가 없으면 ISO 통합 테스트는 건너뛰며, 일반 단위 테스트는
-원본 ISO 없이 실행할 수 있습니다.
-
-
-8. 원본 데이터 관련 주의
--------------------------
-
-HEADA의 DBF 기사 카탈로그에는 원본 MVB 토픽/본문 근거가 없는 5건이 있습니다.
-이 항목들은 다른 달의 유사 기사로 임의 연결하지 않고 catalog-only로 유지합니다.
-
-  92120690
-  94023200
-  9410080_
-  95113560
-  95124060
+현재 릴리즈는 0.7.0입니다. Windows x64 NSIS installer, Ubuntu amd64 DEB,
+macOS x86_64 PKG를 제공합니다. Windows 32비트 패키지는 제공하지 않습니다.
+자세한 변경 내역은 CHANGELOG.md를 확인하십시오.

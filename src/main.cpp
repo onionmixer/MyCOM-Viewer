@@ -13,13 +13,14 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QProcess>
 #include <QRegularExpression>
 #include <QSet>
 #include <QTextCodec>
 #include <QTextStream>
 #include <QTemporaryDir>
 #include <QUrl>
+
+#include "iso9660_extractor.h"
 
 namespace {
 
@@ -1129,7 +1130,7 @@ MvbDecodedTopics decodeMvbTopicHeaders(const QByteArray &data)
         }
         blocks.append(logical);
     }
-    const auto advanceTopicPosition = [&blocks, topicPositionBlockSize](quint32 position, quint32 length, bool *ok) {
+    const auto advanceTopicPosition = [&blocks, topicBlockHeaderSize, topicPositionBlockSize](quint32 position, quint32 length, bool *ok) {
         *ok = false;
         if (position < topicBlockHeaderSize)
             return quint32(0);
@@ -1155,7 +1156,7 @@ MvbDecodedTopics decodeMvbTopicHeaders(const QByteArray &data)
         *ok = true;
         return cursor;
     };
-    const auto readTopic = [&blocks, topicPositionBlockSize](quint32 position, quint32 length, bool *ok) {
+    const auto readTopic = [&blocks, topicBlockHeaderSize, topicPositionBlockSize](quint32 position, quint32 length, bool *ok) {
         QByteArray output;
         *ok = false;
         if (position < topicBlockHeaderSize)
@@ -2104,32 +2105,6 @@ bool normalizeIsoExtraction(const QString &extractionDirectory, const QString &a
     return true;
 }
 
-bool extractIsoWith7z(const QString &sevenZip, const QString &isoPath, const QString &temporaryDirectory,
-                      QString *errorMessage)
-{
-    QProcess process;
-    process.setProgram(sevenZip);
-    process.setArguments({QStringLiteral("x"), QStringLiteral("-y"), isoPath,
-                          QStringLiteral("*.MVB"), QStringLiteral("*.mvb"),
-                          QStringLiteral("DBF/MYDBF01.DBF"), QStringLiteral("dbf/MYDBF01.DBF"),
-                          QStringLiteral("BMP/*"), QStringLiteral("bmp/*"),
-                          QStringLiteral("WAV/*"), QStringLiteral("wav/*"),
-                          QStringLiteral("MYAVI/*"), QStringLiteral("myavi/*"),
-                          QStringLiteral("-o") + temporaryDirectory});
-    process.start();
-    if (!process.waitForStarted()) {
-        *errorMessage = QStringLiteral("Cannot start 7z executable '%1': %2")
-                            .arg(sevenZip, process.errorString());
-        return false;
-    }
-    if (!process.waitForFinished(-1) || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        *errorMessage = QStringLiteral("7z extraction failed: %1")
-                            .arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed());
-        return false;
-    }
-    return true;
-}
-
 QString sha256File(const QString &path, QString *errorMessage)
 {
     QFile file(path);
@@ -2214,7 +2189,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication application(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("mycom-archive-build"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.1.0"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("0.7.0"));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(
@@ -2225,10 +2200,9 @@ int main(int argc, char *argv[])
                                      QStringLiteral("Minimum contiguous text run in bytes (default: 8)."),
                                      QStringLiteral("count"), QStringLiteral("8"));
     parser.addOption(minimumOption);
-    QCommandLineOption sevenZipOption(QStringLiteral("seven-zip"),
-                                      QStringLiteral("7z executable used to extract the ISO (default: 7z)."),
-                                      QStringLiteral("path"), QStringLiteral("7z"));
-    parser.addOption(sevenZipOption);
+    QCommandLineOption checkToolsOption(QStringLiteral("check-tools"),
+                                        QStringLiteral("Check the built-in ISO9660 extractor and exit."));
+    parser.addOption(checkToolsOption);
     QCommandLineOption topicPagesOption(QStringLiteral("topic-pages"),
                                         QStringLiteral("Also write standalone article HTML pages under content/topics."));
     parser.addOption(topicPagesOption);
@@ -2244,6 +2218,14 @@ int main(int argc, char *argv[])
     parser.process(application);
 
     const QStringList positional = parser.positionalArguments();
+    if (parser.isSet(checkToolsOption)) {
+        if (!positional.isEmpty()) {
+            QTextStream(stderr) << "--check-tools does not accept ISO or archive-directory arguments.\n";
+            return 1;
+        }
+        QTextStream(stdout) << "Built-in ISO9660 extraction is ready.\n";
+        return 0;
+    }
     if (positional.size() != 2)
         parser.showHelp(1);
 
@@ -2303,11 +2285,14 @@ int main(int argc, char *argv[])
         QTextStream(stderr) << error << '\n';
         return 1;
     }
-    QTextStream(stdout) << "Extracting " << isoInfo.fileName() << " with " << parser.value(sevenZipOption) << "...\n";
-    if (!extractIsoWith7z(parser.value(sevenZipOption), isoInfo.absoluteFilePath(), extraction.path(), &error)) {
+    QTextStream(stdout) << "Extracting " << isoInfo.fileName() << " with the built-in ISO9660 reader...\n";
+    Iso9660ExtractionSummary extractionSummary;
+    if (!extractMycomIso9660(isoInfo.absoluteFilePath(), extraction.path(), &extractionSummary, &error)) {
         QTextStream(stderr) << error << '\n';
         return 1;
     }
+    QTextStream(stdout) << "Extracted " << extractionSummary.files << " MYCOM file(s), "
+                        << extractionSummary.bytes << " byte(s).\n";
     NormalizedArchiveSource source;
     if (!normalizeIsoExtraction(extraction.path(), archiveDirectory, &source, &error)) {
         QTextStream(stderr) << error << '\n';
