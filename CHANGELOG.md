@@ -1,5 +1,13 @@
 # MYCOM Viewer release history
 
+## 0.7.1
+
+- 자체 소스와 자체 제작 리소스에 MIT License를 적용했습니다.
+- Windows/macOS 패키지에 Qt LGPLv3/GPLv3 전문과 third-party notices를 설치하도록
+  보강했습니다.
+- MYCOM ISO와 변환된 원본 콘텐츠가 프로젝트 MIT 라이선스의 대상이 아님을
+  README에 명시했습니다.
+
 ## 0.7.0
 
 - MYCOM ISO를 직접 분해·정규화·변환하는 archive builder와 Qt5 viewer를

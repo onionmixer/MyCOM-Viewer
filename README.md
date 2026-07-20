@@ -1,6 +1,6 @@
 # MYCOM Viewer
 
-Release 0.7.0
+Release 0.7.1
 
 MYCOM CD-ROM ISO에서 자료를 복원해 읽을 수 있게 만드는 두 개의 프로그램입니다.
 
@@ -21,6 +21,10 @@ DBF, BMP, WAV, AVI 파일을 추출·정규화·변환합니다.
 
 - 이미 만들어 둔 `mycom-archive` 디렉터리: `manifest.json`을 포함해야 합니다.
 - 원본 `MYCOM.ISO`: archive builder로 한 번 변환합니다.
+
+MYCOM ISO와 변환 결과에 포함되는 원본 텍스트·이미지·미디어의 권리는 이
+프로젝트의 MIT 라이선스 대상이 아닙니다. 사용자는 적법하게 보유한 원본에서만
+archive를 생성하고 사용해야 합니다.
 
 viewer의 **File → ISO unpack...** 기능은 함께 설치된 archive builder와 내장
 ISO9660 reader를 먼저 점검한 뒤 ISO를 변환하므로, 터미널을 열지 않고도 archive를
@@ -88,6 +92,9 @@ viewer, archive builder가 함께 설치됩니다. 설치 마침 화면의 **REA
 선택하면 이 안내를 바로 읽을 수 있으며, 시작 메뉴에도 README 바로가기가
 있습니다.
 
+설치 폴더의 `share/doc/mycom-viewer/`에는 프로젝트 MIT 라이선스, Qt LGPLv3/GPLv3
+전문 및 third-party notices가 함께 설치됩니다.
+
 ISO 변환은 **File → ISO unpack...**에서 수행할 수 있으며, 별도 추출 프로그램
 설치가 필요하지 않습니다. 제거는 Windows **설치된 앱** 또는 MYCOM Viewer 시작
 메뉴의 제거 항목을 사용합니다. 사용자가 별도로 만든 archive는 제거하지
@@ -115,6 +122,10 @@ sudo apt remove mycom-viewer
 `MYCOM-Viewer-...pkg`를 열어 Installer 절차를 따릅니다. Installer가 설치 전에
 README를 표시하며, 설치 후에는 **mycom-viewer.app**의 Resources에도 같은
 README가 포함됩니다. viewer는 Applications 폴더에서 실행합니다.
+
+프로젝트와 Qt 관련 라이선스 문서는
+`/usr/local/share/doc/mycom-viewer/`에 설치되며, 앱 번들 Resources에도 MIT
+라이선스와 third-party notices가 포함됩니다.
 
 ISO 변환은 GUI의 **File → ISO unpack...**에서 수행할 수 있습니다. 이 기능은
 `/usr/local/bin/mycom-archive-build`의 내장 ISO9660 reader를 사용합니다. package가
@@ -163,6 +174,14 @@ MYCOM_ISO=/absolute/path/to/MYCOM.ISO ctest --test-dir build -L iso --output-on-
 
 ## 릴리즈 정보
 
-현재 릴리즈는 **0.7.0**입니다. Windows x64 NSIS installer, Ubuntu amd64 DEB,
+현재 릴리즈는 **0.7.1**입니다. Windows x64 NSIS installer, Ubuntu amd64 DEB,
 macOS x86_64 PKG를 제공합니다. Windows 32비트 패키지는 제공하지 않습니다.
 변경 내역은 [CHANGELOG.md](CHANGELOG.md)에서 확인할 수 있습니다.
+
+## 라이선스
+
+MYCOM Viewer의 자체 소스와 자체 제작 리소스는 [MIT License](LICENSE)로
+제공됩니다. Windows/macOS 패키지에는 동적으로 링크되는 Qt 런타임이 포함되며,
+Qt는 별도 LGPLv3 조건으로 제공됩니다. 자세한 고지와 LGPLv3/GPLv3 전문은
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 및 설치된 문서 폴더를
+확인하십시오.

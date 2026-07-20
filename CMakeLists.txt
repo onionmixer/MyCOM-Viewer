@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(mycom_mvb_converter VERSION 0.7.0 LANGUAGES CXX)
+project(mycom_mvb_converter VERSION 0.7.1 LANGUAGES CXX)
 
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -87,9 +87,9 @@ elseif(APPLE)
     set_source_files_properties("${MYCOM_MACOS_ICON}"
         PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
     target_sources(mycom-viewer PRIVATE "${MYCOM_MACOS_ICON}")
-    set_source_files_properties(README.txt
+    set_source_files_properties(README.txt LICENSE THIRD_PARTY_NOTICES.md
         PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-    target_sources(mycom-viewer PRIVATE README.txt)
+    target_sources(mycom-viewer PRIVATE README.txt LICENSE THIRD_PARTY_NOTICES.md)
     set_target_properties(mycom-viewer PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in"
@@ -117,7 +117,17 @@ install(TARGETS mycom-archive-build mycom-viewer
     BUNDLE DESTINATION "${MYCOM_VIEWER_BUNDLE_DESTINATION}"
     COMPONENT Runtime
 )
-install(FILES README.md README.txt CHANGELOG.md DESTINATION "${MYCOM_INSTALL_DOCDIR}" COMPONENT Runtime)
+install(FILES
+    README.md
+    README.txt
+    CHANGELOG.md
+    LICENSE
+    THIRD_PARTY_NOTICES.md
+    licenses/qt/LICENSE.LGPL-3.0.txt
+    licenses/qt/LICENSE.GPL-3.0.txt
+    DESTINATION "${MYCOM_INSTALL_DOCDIR}"
+    COMPONENT Runtime
+)
 install(FILES resources/icons/mycom-viewer.svg
     DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps" COMPONENT Runtime)
 
@@ -204,6 +214,9 @@ if(WIN32)
     set(CPACK_NSIS_MUI_FINISHPAGE_RUN "../share/doc/mycom-viewer/README.txt")
     set(CPACK_NSIS_MENU_LINKS
         "share/doc/mycom-viewer/README.txt" "MYCOM Viewer README")
+    list(APPEND CPACK_NSIS_MENU_LINKS
+        "share/doc/mycom-viewer/LICENSE" "MYCOM Viewer License"
+        "share/doc/mycom-viewer/THIRD_PARTY_NOTICES.md" "Third-party notices")
     set(CPACK_PACKAGE_EXECUTABLES "mycom-viewer;MYCOM Viewer")
 elseif(APPLE)
     set(CPACK_GENERATOR "productbuild")

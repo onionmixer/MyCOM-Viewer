@@ -1,7 +1,7 @@
 MYCOM Viewer
 ============
 
-Release 0.7.0
+Release 0.7.1
 
 MYCOM CD-ROM ISO에서 자료를 복원해 읽을 수 있게 만드는 프로그램입니다.
 
@@ -17,6 +17,8 @@ MYCOM CD-ROM ISO에서 자료를 복원해 읽을 수 있게 만드는 프로그
 * 배포 패키지에는 ISO와 변환 archive가 기본 포함되지 않습니다.
 * File -> ISO unpack...은 함께 배포된 archive builder와 내장 ISO9660 reader를 점검한 뒤 ISO를
   변환하고, 결과 archive를 자동으로 엽니다.
+* MYCOM ISO와 여기에서 생성하는 원본 텍스트·이미지·미디어는 MIT 대상이 아닙니다.
+  적법하게 보유한 원본에서만 archive를 생성·사용하십시오.
 
 처음 사용하기
 -------------
@@ -61,6 +63,8 @@ Windows
   ISO 변환은 File -> ISO unpack...에서 수행할 수 있으며 별도 추출 프로그램 설치가
   필요하지 않습니다. Windows 설치된 앱 또는 시작 메뉴의 제거 항목으로 제거합니다.
   사용자가 만든 archive는 제거하지 않습니다.
+  설치 폴더의 share/doc/mycom-viewer에 MIT, Qt LGPLv3/GPLv3 전문 및 third-party
+  notices가 함께 설치됩니다.
 
 Ubuntu
   sudo apt install ./mycom-viewer_*.deb
@@ -68,6 +72,7 @@ Ubuntu
   응용 프로그램 메뉴의 MYCOM Viewer 또는 mycom-viewer 명령으로 실행합니다.
   이 문서는 /usr/share/doc/mycom-viewer/README.txt에 설치됩니다. ISO 변환에는
   추가 추출 도구가 필요하지 않습니다.
+  같은 문서 폴더에 LICENSE, THIRD_PARTY_NOTICES.md 및 Qt 라이선스 전문이 있습니다.
 
   sudo apt remove mycom-viewer
 
@@ -78,6 +83,8 @@ macOS
 
   GUI의 File -> ISO unpack...은 /usr/local/bin/mycom-archive-build의 내장
   ISO9660 reader를 사용합니다.
+  /usr/local/share/doc/mycom-viewer에 라이선스 문서가 설치되며, 앱 번들 Resources에도
+  LICENSE와 THIRD_PARTY_NOTICES.md가 포함됩니다.
   서명·공증되지 않은 개발 패키지는 macOS 보안 설정에서 열기를 승인해야 할 수
   있습니다.
 
@@ -97,6 +104,13 @@ DBF 레코드 수와 변환 결과를 기록합니다.
 릴리즈 정보
 -----------
 
-현재 릴리즈는 0.7.0입니다. Windows x64 NSIS installer, Ubuntu amd64 DEB,
+현재 릴리즈는 0.7.1입니다. Windows x64 NSIS installer, Ubuntu amd64 DEB,
 macOS x86_64 PKG를 제공합니다. Windows 32비트 패키지는 제공하지 않습니다.
 자세한 변경 내역은 CHANGELOG.md를 확인하십시오.
+
+라이선스
+--------
+
+MYCOM Viewer의 자체 소스와 자체 제작 리소스는 LICENSE의 MIT License로
+제공됩니다. Windows/macOS 패키지의 Qt 런타임은 별도 LGPLv3 조건이며,
+THIRD_PARTY_NOTICES.md와 설치된 LGPLv3/GPLv3 전문을 함께 확인하십시오.
