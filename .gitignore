@@ -1,0 +1,47 @@
+# CMake and compiler output
+/build/
+/cmake-build-*/
+/CMakeCache.txt
+/CMakeFiles/
+/Testing/
+/compile_commands.json
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Local Qt/IDE settings
+*.user
+*.user.*
+*.autosave
+*.swp
+*.swo
+.idea/
+.vscode/
+mycom-viewer.ini
+
+# Source media and extracted ISO data (rebuild with mycom-archive-build)
+*.iso
+*.ISO
+*.7z
+*.7Z
+*.zip
+*.ZIP
+*.rar
+*.RAR
+*.mvb
+*.MVB
+/mycom_source/
+
+# Generated MYCOM archives and legacy conversion output
+/mycom_archive/
+/converted_output/
+
+# Local temporary/archive test output
+/mycom-iso-integration-archive/
+/.tmp/
+/tmp/
